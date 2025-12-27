@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Rocket, Wand2, Monitor, ArrowLeft, CheckCircle, Smartphone } from 'lucide-react'
+import { Rocket, Wand2, Monitor, ArrowLeft, CheckCircle } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
