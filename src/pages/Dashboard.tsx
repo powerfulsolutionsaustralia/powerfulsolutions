@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { LayoutDashboard, Users, Star, Settings, LogOut, Menu, RefreshCcw, CheckCircle, Clock, Hammer, Globe, ArrowRight } from 'lucide-react'
 import { useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
@@ -30,7 +30,7 @@ export default function Dashboard() {
     const [stats, setStats] = useState({ total_leads: 0, new_leads: 0, total_sites: 0 })
     const navigate = useNavigate()
 
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         setLoading(true)
 
         // Fetch Leads
@@ -62,7 +62,7 @@ export default function Dashboard() {
         })
 
         setLoading(false)
-    }
+    }, [])
 
     useEffect(() => {
         fetchData()
@@ -79,7 +79,7 @@ export default function Dashboard() {
             supabase.removeChannel(leadsChannel)
             supabase.removeChannel(sitesChannel)
         }
-    }, [])
+    }, [fetchData])
 
     const updateStatus = async (id: string, newStatus: string) => {
         const { error } = await supabase
