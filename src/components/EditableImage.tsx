@@ -1,7 +1,7 @@
-import { useState } from 'react'
-import { Upload, Link as LinkIcon, X, Sparkles, Loader } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Upload, Link as LinkIcon, X, Sparkles, Loader, Wand2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
-import { generateHeroImage } from '../lib/generateImage'
+import { generateHeroImage, enhanceImagePrompt } from '../lib/generateImage'
 
 interface EditableImageProps {
     value: string
@@ -27,6 +27,17 @@ export default function EditableImage({
     const [urlInput, setUrlInput] = useState('')
     const [uploading, setUploading] = useState(false)
     const [generating, setGenerating] = useState(false)
+    const [enhancing, setEnhancing] = useState(false)
+
+    // AI Prompt State
+    const [promptText, setPromptText] = useState('')
+    const [showCustomPrompt, setShowCustomPrompt] = useState(false)
+
+    useEffect(() => {
+        if (showModal && businessName && industry) {
+            setPromptText(`Professional hero image for ${businessName}, a ${industry} business. Modern, clean, and bright.`)
+        }
+    }, [showModal, businessName, industry])
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
@@ -63,6 +74,20 @@ export default function EditableImage({
         }
     }
 
+    const handleEnhancePrompt = async () => {
+        if (!promptText.trim()) return
+
+        setEnhancing(true)
+        try {
+            const enhanced = await enhanceImagePrompt(promptText)
+            setPromptText(enhanced)
+        } catch (error) {
+            console.error('Enhancement failed:', error)
+        } finally {
+            setEnhancing(false)
+        }
+    }
+
     const handleAIGenerate = async () => {
         if (!businessName || !industry) {
             alert('Business name and industry are required for AI generation.')
@@ -71,13 +96,33 @@ export default function EditableImage({
 
         setGenerating(true)
         try {
-            const imageUrl = await generateHeroImage(businessName, industry)
-            if (imageUrl) {
-                onSave(imageUrl)
-                setShowModal(false)
-            } else {
-                alert('AI image generation failed. Please try again.')
+            // Generate the image (returns base64 data URL)
+            const base64Image = await generateHeroImage(businessName, industry, promptText)
+
+            if (!base64Image) {
+                throw new Error('No image generated')
             }
+
+            // Convert base64 to Blob
+            const res = await fetch(base64Image)
+            const blob = await res.blob()
+            const file = new File([blob], `generated-${Date.now()}.png`, { type: 'image/png' })
+
+            // Upload to Supabase
+            const fileName = `ai-generated-${Date.now()}.png`
+            const { error: uploadError } = await supabase.storage
+                .from('site-images')
+                .upload(fileName, file)
+
+            if (uploadError) throw uploadError
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('site-images')
+                .getPublicUrl(fileName)
+
+            onSave(publicUrl)
+            setShowModal(false)
+
         } catch (error) {
             console.error('AI generation failed:', error)
             alert('AI image generation failed. Please try again.')
@@ -146,7 +191,7 @@ export default function EditableImage({
                 >
                     <div
                         className="glass-card"
-                        style={{ padding: '2rem', maxWidth: '500px', width: '90%' }}
+                        style={{ padding: '2rem', maxWidth: '500px', width: '90%', maxHeight: '90vh', overflowY: 'auto' }}
                         onClick={(e) => e.stopPropagation()}
                     >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
@@ -161,48 +206,78 @@ export default function EditableImage({
 
                         {/* AI Generate Option */}
                         {canGenerateAI && (
-                            <>
-                                <div style={{ marginBottom: '1.5rem' }}>
+                            <div style={{ marginBottom: '2rem', borderBottom: '1px solid var(--glass-border)', paddingBottom: '2rem' }}>
+                                <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <h4 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <Sparkles size={16} className="text-secondary" />
+                                        AI Generation
+                                    </h4>
                                     <button
-                                        onClick={handleAIGenerate}
-                                        disabled={generating}
-                                        className="btn"
-                                        style={{
-                                            width: '100%',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            gap: '0.5rem',
-                                            background: 'linear-gradient(135deg, #8b5cf6, #6366f1)',
-                                            border: 'none',
-                                            color: 'white',
-                                            padding: '1rem'
-                                        }}
+                                        onClick={() => setShowCustomPrompt(!showCustomPrompt)}
+                                        style={{ background: 'transparent', border: 'none', color: 'var(--primary)', fontSize: '0.8rem', cursor: 'pointer', textDecoration: 'underline' }}
                                     >
-                                        {generating ? (
-                                            <>
-                                                <Loader size={20} className="animate-spin" />
-                                                Generating with Nano Banana Pro...
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Sparkles size={20} />
-                                                Generate with AI (Nano Banana Pro)
-                                            </>
-                                        )}
+                                        {showCustomPrompt ? 'Hide options' : 'Customize prompt'}
                                     </button>
-                                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem', textAlign: 'center' }}>
-                                        Uses Gemini 3 Pro to create a unique image for {businessName}
-                                    </p>
                                 </div>
 
-                                <div style={{ textAlign: 'center', margin: '1rem 0', color: 'var(--text-muted)' }}>
-                                    OR
-                                </div>
-                            </>
+                                {showCustomPrompt && (
+                                    <div style={{ marginBottom: '1rem' }}>
+                                        <textarea
+                                            value={promptText}
+                                            onChange={(e) => setPromptText(e.target.value)}
+                                            className="glass-input"
+                                            rows={3}
+                                            placeholder="Describe the image you want..."
+                                            style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}
+                                        />
+                                        <button
+                                            onClick={handleEnhancePrompt}
+                                            disabled={enhancing || !promptText}
+                                            className="btn btn-secondary"
+                                            style={{ width: '100%', fontSize: '0.8rem', padding: '0.5rem' }}
+                                        >
+                                            {enhancing ? <Loader size={12} className="animate-spin" /> : <Wand2 size={12} />}
+                                            Enhance Description with AI
+                                        </button>
+                                    </div>
+                                )}
+
+                                <button
+                                    onClick={handleAIGenerate}
+                                    disabled={generating}
+                                    className="btn"
+                                    style={{
+                                        width: '100%',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '0.5rem',
+                                        background: 'linear-gradient(135deg, #8b5cf6, #6366f1)',
+                                        border: 'none',
+                                        color: 'white',
+                                        padding: '1rem'
+                                    }}
+                                >
+                                    {generating ? (
+                                        <>
+                                            <Loader size={20} className="animate-spin" />
+                                            Generating with Nano Banana Pro...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Sparkles size={20} />
+                                            Generate Image
+                                        </>
+                                    )}
+                                </button>
+                                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem', textAlign: 'center' }}>
+                                    Powered by Gemini 3 Pro
+                                </p>
+                            </div>
                         )}
 
                         <div style={{ marginBottom: '1.5rem' }}>
+                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Upload File</label>
                             <label
                                 htmlFor="file-upload"
                                 className="btn btn-primary"

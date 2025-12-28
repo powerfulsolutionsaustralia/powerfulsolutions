@@ -1,16 +1,27 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
 
 const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GOOGLE_API_KEY)
-const model = genAI.getGenerativeModel({ model: 'gemini-3.0-pro-image' })
+const imageModel = genAI.getGenerativeModel({ model: 'gemini-3.0-pro-image' })
+const textModel = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
 
-export async function generateHeroImage(businessName: string, industry: string): Promise<string | null> {
+export async function enhanceImagePrompt(basePrompt: string): Promise<string> {
     try {
-        const prompt = `Professional hero image for ${businessName}, a ${industry} business. 
+        const result = await textModel.generateContent(`Rewrite this image prompt to be more descriptive, photorealistic, and high-quality for a business website hero section. Keep it concise (under 50 words). Focus on lighting, composition, and mood. Avoid text/logos. Prompt: "${basePrompt}"`)
+        return result.response.text().trim() || basePrompt
+    } catch (e) {
+        console.error("Prompt enhancement failed", e)
+        return basePrompt
+    }
+}
+
+export async function generateHeroImage(businessName: string, industry: string, customPrompt?: string): Promise<string | null> {
+    try {
+        const prompt = customPrompt || `Professional hero image for ${businessName}, a ${industry} business. 
     Modern, clean, high-quality photography style. 
     Bright, inviting atmosphere. 
     No text or logos.`
 
-        const result = await model.generateContent(prompt)
+        const result = await imageModel.generateContent(prompt)
         const response = await result.response
 
         // Gemini Image models via the SDK often return images as inline data (base64)
