@@ -1,6 +1,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
 
 const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GOOGLE_API_KEY)
+
 // Note: If 'gemini-3.0-pro-image' is not available, try 'imagen-3.0-generate-001' or check API docs.
 const imageModel = genAI.getGenerativeModel({ model: 'gemini-3.0-pro-image' })
 const textModel = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
@@ -37,7 +38,7 @@ export async function generateHeroImage(businessName: string, industry: string, 
         // Gemini Image models via the SDK often return images as inline data (base64)
         // We need to look for inlineData in the response parts
         const parts = response.candidates?.[0]?.content?.parts
-        const imagePart = parts?.find(part => part.inlineData) as any
+        const imagePart = parts?.find((part: any) => part.inlineData) as any
 
         if (imagePart && imagePart.inlineData && imagePart.inlineData.data) {
             const mimeType = imagePart.inlineData.mimeType || 'image/png';
