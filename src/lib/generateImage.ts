@@ -1,6 +1,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
 
 const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GOOGLE_API_KEY)
+// Note: If 'gemini-3.0-pro-image' is not available, try 'imagen-3.0-generate-001' or check API docs.
 const imageModel = genAI.getGenerativeModel({ model: 'gemini-3.0-pro-image' })
 const textModel = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
 
@@ -21,8 +22,17 @@ export async function generateHeroImage(businessName: string, industry: string, 
     Bright, inviting atmosphere. 
     No text or logos.`
 
+        if (!import.meta.env.VITE_GOOGLE_API_KEY) {
+            console.error('API Error: VITE_GOOGLE_API_KEY is missing')
+            return null
+        }
+
+        console.log('Generating image with prompt:', prompt)
         const result = await imageModel.generateContent(prompt)
         const response = await result.response
+
+        // Log the full response structure for debugging
+        // console.log('Full API Response:', JSON.stringify(response, null, 2))
 
         // Gemini Image models via the SDK often return images as inline data (base64)
         // We need to look for inlineData in the response parts
@@ -34,10 +44,15 @@ export async function generateHeroImage(businessName: string, industry: string, 
             return `data:${mimeType};base64,${imagePart.inlineData.data}`;
         }
 
-        console.error('No image data found in response')
+        console.error('No image data found in response parts. Response candidates:', response.candidates)
         return null
-    } catch (error) {
-        console.error('Image generation failed:', error)
+    } catch (error: any) {
+        console.error('Image generation failed details:', {
+            message: error.message,
+            name: error.name,
+            stack: error.stack,
+            model: 'gemini-3.0-pro-image'
+        })
         return null
     }
 }
