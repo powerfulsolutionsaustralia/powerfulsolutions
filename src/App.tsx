@@ -3,6 +3,7 @@ import { useState } from 'react'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import SiteBuilder from './pages/SiteBuilder'
+import SiteEditor from './pages/SiteEditor'
 import ClientSite from './pages/ClientSite'
 import LeadForm from './components/LeadForm'
 import './App.css'
@@ -203,6 +204,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/site-builder" element={<SiteBuilder />} />
+        <Route path="/editor/:slug" element={<SiteEditor />} />
         <Route path="/site/:slug" element={<ClientSite />} />
       </Routes>
     </Router>

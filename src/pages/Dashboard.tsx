@@ -206,6 +206,9 @@ export default function Dashboard() {
                                 </td>
                                 <td>
                                     <div style={{ display: 'flex', gap: '0.75rem' }}>
+                                        <Link to={`/editor/${site.slug}`} className="action-btn secondary" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 1rem' }}>
+                                            Edit
+                                        </Link>
                                         <Link to={`/site/${site.slug}`} target="_blank" className="action-btn" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 1rem' }}>
                                             Visit <ExternalLink size={14} />
                                         </Link>
