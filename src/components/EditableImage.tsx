@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { Upload, Link as LinkIcon, X } from 'lucide-react'
+import { Upload, Link as LinkIcon, X, Sparkles, Loader } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { generateHeroImage } from '../lib/generateImage'
 
 interface EditableImageProps {
     value: string
@@ -8,6 +9,8 @@ interface EditableImageProps {
     alt?: string
     style?: React.CSSProperties
     className?: string
+    businessName?: string
+    industry?: string
 }
 
 export default function EditableImage({
@@ -15,12 +18,15 @@ export default function EditableImage({
     onSave,
     alt = 'Image',
     style = {},
-    className = ''
+    className = '',
+    businessName = '',
+    industry = ''
 }: EditableImageProps) {
     const [isHovered, setIsHovered] = useState(false)
     const [showModal, setShowModal] = useState(false)
     const [urlInput, setUrlInput] = useState('')
     const [uploading, setUploading] = useState(false)
+    const [generating, setGenerating] = useState(false)
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
@@ -56,6 +62,31 @@ export default function EditableImage({
             setShowModal(false)
         }
     }
+
+    const handleAIGenerate = async () => {
+        if (!businessName || !industry) {
+            alert('Business name and industry are required for AI generation.')
+            return
+        }
+
+        setGenerating(true)
+        try {
+            const imageUrl = await generateHeroImage(businessName, industry)
+            if (imageUrl) {
+                onSave(imageUrl)
+                setShowModal(false)
+            } else {
+                alert('AI image generation failed. Please try again.')
+            }
+        } catch (error) {
+            console.error('AI generation failed:', error)
+            alert('AI image generation failed. Please try again.')
+        } finally {
+            setGenerating(false)
+        }
+    }
+
+    const canGenerateAI = businessName && industry
 
     return (
         <>
@@ -127,6 +158,49 @@ export default function EditableImage({
                                 <X size={24} />
                             </button>
                         </div>
+
+                        {/* AI Generate Option */}
+                        {canGenerateAI && (
+                            <>
+                                <div style={{ marginBottom: '1.5rem' }}>
+                                    <button
+                                        onClick={handleAIGenerate}
+                                        disabled={generating}
+                                        className="btn"
+                                        style={{
+                                            width: '100%',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            gap: '0.5rem',
+                                            background: 'linear-gradient(135deg, #8b5cf6, #6366f1)',
+                                            border: 'none',
+                                            color: 'white',
+                                            padding: '1rem'
+                                        }}
+                                    >
+                                        {generating ? (
+                                            <>
+                                                <Loader size={20} className="animate-spin" />
+                                                Generating with Nano Banana Pro...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Sparkles size={20} />
+                                                Generate with AI (Nano Banana Pro)
+                                            </>
+                                        )}
+                                    </button>
+                                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem', textAlign: 'center' }}>
+                                        Uses Gemini 3 Pro to create a unique image for {businessName}
+                                    </p>
+                                </div>
+
+                                <div style={{ textAlign: 'center', margin: '1rem 0', color: 'var(--text-muted)' }}>
+                                    OR
+                                </div>
+                            </>
+                        )}
 
                         <div style={{ marginBottom: '1.5rem' }}>
                             <label

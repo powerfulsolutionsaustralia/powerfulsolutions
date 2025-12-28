@@ -370,6 +370,8 @@ export default function SiteEditor() {
                                 onSave={(val) => updateField('hero_image_url', val)}
                                 alt="Hero"
                                 style={{ width: '100%', borderRadius: '1rem', maxHeight: '500px', objectFit: 'cover' }}
+                                businessName={draftState.business_name}
+                                industry={draftState.industry}
                             />
                         </div>
                     </section>
