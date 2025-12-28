@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Wand2, Monitor, ArrowLeft, CheckCircle, Store, MapPin, Phone, Clock, Image as ImageIcon, Briefcase, Sparkles, Layout } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { generateHeroImage } from '../lib/generateImage'
 
 export default function SiteBuilder() {
     const [step, setStep] = useState(1)
@@ -23,6 +24,7 @@ export default function SiteBuilder() {
         headline: '',
         subheadline: '',
         value_proposition: '',
+        hero_image_url: '',
         testimonials: [
             { name: 'John Doe', text: 'Amazing service! Highly recommend this business.' },
             { name: 'Jane Smith', text: 'Very professional and responsive. Great quality.' }
@@ -59,13 +61,65 @@ export default function SiteBuilder() {
 
         for (const s of steps) {
             setDeployStep(s)
+
+            // Generate AI image during "Optimizing industry imagery..." step
+            if (s === 'Optimizing industry imagery...') {
+                let heroImageUrl = 'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&q=80&w=1200' // fallback
+
+                try {
+                    // Generate AI image
+                    const generatedImageUrl = await generateHeroImage(
+                        formData.business_name,
+                        formData.industry
+                    )
+
+                    if (generatedImageUrl) {
+                        // Download image from Replicate
+                        const imageResponse = await fetch(generatedImageUrl)
+                        const imageBlob = await imageResponse.blob()
+
+                        // Upload to Supabase Storage
+                        const fileName = `${formData.slug}-hero-${Date.now()}.png`
+                        const { data: uploadData, error: uploadError } = await supabase.storage
+                            .from('site-images')
+                            .upload(fileName, imageBlob)
+
+                        if (!uploadError && uploadData) {
+                            const { data: { publicUrl } } = supabase.storage
+                                .from('site-images')
+                                .getPublicUrl(fileName)
+
+                            heroImageUrl = publicUrl
+                        }
+                    }
+                } catch (error) {
+                    console.error('Image generation/upload failed, using fallback:', error)
+                }
+
+                // Store the image URL in formData
+                formData.hero_image_url = heroImageUrl
+            }
+
             await new Promise(r => setTimeout(r, 600))
         }
 
-        const { error } = await supabase.from('sites').insert([formData])
+        // Get current authenticated user
+        const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+        if (authError || !user) {
+            alert('You must be logged in to deploy a site. Please log in and try again.')
+            setDeploying(false)
+            return
+        }
+
+        const { error } = await supabase.from('sites').insert([{
+            ...formData,
+            user_id: user.id
+        }])
 
         if (error) {
-            alert('Deployment failed: ' + error.message)
+            console.error('Deployment error:', error)
+            alert('Deployment failed: ' + (error.message || 'Please try again later'))
             setDeploying(false)
         } else {
             setDeployedUrl(`${window.location.origin}/site/${formData.slug}`)

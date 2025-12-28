@@ -5,9 +5,11 @@ import { X, Send, CheckCircle } from 'lucide-react'
 interface LeadFormProps {
     onClose?: () => void
     isEmbed?: boolean
+    siteId?: string
+    userId?: string
 }
 
-export default function LeadForm({ onClose, isEmbed }: LeadFormProps) {
+export default function LeadForm({ onClose, isEmbed, siteId, userId }: LeadFormProps) {
     const [formData, setFormData] = useState({
         name: '',
         email: '',
@@ -25,9 +27,14 @@ export default function LeadForm({ onClose, isEmbed }: LeadFormProps) {
 
         const { error: submitError } = await supabase
             .from('leads')
-            .insert([formData])
+            .insert([{
+                ...formData,
+                site_id: siteId,
+                user_id: userId
+            }])
 
         if (submitError) {
+            console.error('Lead submission error:', submitError)
             setError('Something went wrong. Please try again.')
             setLoading(false)
         } else {

@@ -5,6 +5,8 @@ import LeadForm from '../components/LeadForm'
 import { CheckCircle, MapPin, Phone, Clock, Star, ArrowRight, Instagram, Facebook, Twitter } from 'lucide-react'
 
 interface SiteConfig {
+    id: string
+    user_id: string
     slug: string
     business_name: string
     industry: string
@@ -26,6 +28,14 @@ export default function ClientSite() {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(false)
     const [showLeadForm, setShowLeadForm] = useState(false)
+
+    const adjustColor = (color: string, amount: number) => {
+        try {
+            return '#' + color.replace(/^#/, '').replace(/../g, color => ('0' + Math.min(255, Math.max(0, parseInt(color, 16) + amount)).toString(16)).substr(-2));
+        } catch {
+            return color
+        }
+    }
 
     useEffect(() => {
         const fetchSite = async () => {
@@ -55,14 +65,6 @@ export default function ClientSite() {
         }
     }, [slug])
 
-    const adjustColor = (color: string, amount: number) => {
-        try {
-            return '#' + color.replace(/^#/, '').replace(/../g, color => ('0' + Math.min(255, Math.max(0, parseInt(color, 16) + amount)).toString(16)).substr(-2));
-        } catch (e) {
-            return color
-        }
-    }
-
     if (loading) return <div className="layout-center" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div className="animate-spin" style={{ width: '40px', height: '40px', border: '4px solid var(--primary)', borderTopColor: 'transparent', borderRadius: '50%' }}></div>
     </div>
@@ -77,7 +79,7 @@ export default function ClientSite() {
 
     return (
         <div className="app" style={{ background: '#020617', color: 'white', overflowX: 'hidden' }}>
-            {showLeadForm && <LeadForm onClose={() => setShowLeadForm(false)} />}
+            {showLeadForm && <LeadForm onClose={() => setShowLeadForm(false)} siteId={site.id} userId={site.user_id} />}
 
             {/* Header */}
             <nav className="navbar" style={{ padding: '1rem 0', background: 'rgba(2, 6, 23, 0.8)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
@@ -144,7 +146,7 @@ export default function ClientSite() {
                     </div>
 
                     <div className="animate-float" style={{ animationDelay: '0.3s' }}>
-                        <LeadForm isEmbed={true} />
+                        <LeadForm isEmbed={true} siteId={site.id} userId={site.user_id} />
                     </div>
                 </div>
             </section>
